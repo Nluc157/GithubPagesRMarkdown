@@ -1,0 +1,794 @@
+---
+title: "E-Commerce Data Exploration: Unveiling Insights Through Data Analytics"
+author: "Nicholas Lucido"
+output:
+  html_document:
+    toc: true
+---
+
+## Introduction
+
+Welcome to my exploratory data analysis (EDA) project focused on understanding and drawing actionable insights from the website logs of an e-commerce business. In this analysis, I will be using RStudio to explore the dataset and uncover patterns, trends, and valuable information that may help inform business strategies and improve marketing efforts. By employing the six phases of data analytics---Ask, Prepare, Process, Analyze, Share, and Act---I aim to unravel key insights to drive strategic, data-driven decisions.
+
+## Why EDA Matters
+
+Exploratory data analysis is a crucial step towards extracting meaningful information from raw data. By employing visualization and being mindful of patterns within the data, we may identify opportunities, detect potential anomalies, and use our discoveries to formulate new hypotheses.
+
+Join me on this data exploration journey as I uncover valuable insights from the data of the e-commerce website.
+
+Let's dive in!
+
+## Ask: Defining Key Objectives
+
+In the initial phase of our data exploration journey, the "Ask" phase, we articulate the key questions and objectives that will guide our analysis. Our focus will be on identifying potential problems and extracting actionable insights to inform strategic business decisions. Our primary goal is to uncover trends and patterns that may significantly enhance our marketing strategies. Since site membership is a prerequisite for making a purchase, acquiring more members will be the focal point of our analysis.
+
+## Prepare: Setting the Foundation
+
+In the "Prepare" phase, our focus will be on laying the groundwork for our subsequent analysis. I have selected a high-quality e-commerce website logs dataset from Kaggle, which boasts a usability score of 10.00. This score reflects the highest degree of completeness, credibility, and compatibility on the site, allowing us to start our analysis off on a robust foundation. The dataset contains crucial information, which includes access timestamps, IP addresses, country, language, platform, and sales amounts. Containing 15 variables in a CSV (comma-separated values) format, the data provides a useful and detailed perspective of user interactions on the website. We'll use the R programming language in RStudio to manipulate and explore the data efficiently. After loading the dataset into our environment, we'll be ready to delve into the subsequent phases, employing various statistical and visualization techniques to extract meaningful insights and help guide data-driven decision-making.
+
+```{r}
+
+ options(repos = c(CRAN = "https://cran.rstudio.com/")) 
+
+ E_commerce_website_data <- read.csv("~/Desktop/E-commerce Website Logs.csv")
+ 
+ sum(duplicated(E_commerce_website_data)) #check for duplicates 
+ 
+ sum(is.na(E_commerce_website_data)) #check for missing values 
+
+
+
+ 
+```
+
+## Process: Crafting Insights
+
+For the "Process" phase, meticulous steps were taken to ensure the integrity and coherence of our e-commerce dataset. This involved a thorough check for missing values, identification of any potential outliers, and resolution of any inconsistencies that were encountered in the data. After, the refined dataset was stored in a structured data frame, setting the stage for more targeted and meaningful insights. Stacked barplots were employed as a visual tool to initiate the exploration of relationships between categorical variables, offering a preliminary glimpse into the intricate patterns between them. This comprehensive "Process" phase establishes a solid foundation for the forthcoming analytical endeavors.
+
+```{r, message=FALSE}
+ 
+ #Loading packages & libraries 
+
+ library(stringr)
+ library(mosaic)
+ library(vcd)
+ library(tidyverse)
+ library(janitor)
+ library(dplyr)
+ library(ggplot2)
+ library(viridis)
+ library(hrbrthemes) 
+
+
+```
+
+After loading the essential packages and their corresponding libraries, I embark on the data processing journey to ensure cleanliness, organization, and readiness for analysis. Initially, I examine the variables and their values within the dataset, contemplating potential statistical tools that may be used for a thorough analysis.
+
+```{r}
+
+ head(E_commerce_website_data)
+ 
+ str(E_commerce_website_data)
+ 
+```
+
+As I inspect the dataset, I identify variable names with misspellings and incorrect labels. To enhance clarity, I rectify these issues and exclude the 'SafFRi' category, which appears to be a data entry error. Additionally, I convert the 'duration_sec' variable into minutes for a more straightforward interpretation. Furthermore, I create a new data frame specifically for normal and premium members, setting the stage for future visualizations and analysis.
+
+Notably, the 'age' variable is initially labeled as being a 'character' data type, despite containing numerical values. To facilitate statistical calculations in the upcoming analysis phase, I generate another data frame that transforms 'age' into an integer value.
+
+```{r}
+ 
+ #Processing data for analysis 
+
+ E_commerce_data_prepared <- E_commerce_website_data %>% 
+   mutate(duration_min  =duration_.secs./60)  %>%  
+   select(-duration_.secs.) %>% 
+   rename(date_accessed=accessed_date, ip_address=ip, total_bytes =bytes,   platform_used=accessed_Ffom) %>% 
+   filter(platform_used != "SafFRi") 
+ 
+  
+ #Stored as data frame 
+ E_commerce_data_prepared <- data.frame(E_commerce_data_prepared)
+ 
+ 
+ #Data frame with 'Not Logged In' members removed 
+
+ E_commerce_data_prepared1 <- E_commerce_data_prepared %>% 
+   filter(membership != 'Not Logged In') %>% 
+   mutate(language = str_to_title(language)) 
+ 
+
+  #Convert 'age' to integer 
+ E_commerce_data_prepared1$age <- as.integer(as.character (E_commerce_data_prepared1$age))
+
+
+  #Remove missing values from age 
+ E_commerce_data_prepared2 <- na.omit(E_commerce_data_prepared1)
+ 
+ 
+ head(E_commerce_data_prepared2)
+
+
+
+```
+
+In preparing our categorical variables for deeper analysis, we construct contingency tables to examine both counts and relative frequencies. These tables offer valuable insights into the distribution of users across premium and normal memberships. By calculating row and column margins, we gain a comprehensive view of the relative proportions, providing further insights into user engagement and patterns.
+
+```{r}
+
+ #Contingency table - platforms and membership (normal,premium)
+ 
+ my.ctable <- table(E_commerce_data_prepared1$platform_used,  E_commerce_data_prepared1$membership)
+ 
+ #Relative frequencies 
+ 
+ addmargins(my.ctable)
+ 
+ proportions(my.ctable) #proportions of all users in data 
+ 
+ proportions(my.ctable, 1) #proportions of rows 
+ 
+ proportions(my.ctable, 2) #proportions of columns 
+ 
+ #Visual of frequency distribution 
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = platform_used, fill = membership)) +
+  geom_bar() +
+  labs(title = "Stacked Barplot of Platform and Membership",
+       x = "Platform",
+       y = "Count", fill = "Membership") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+  
+  
+  
+
+```
+
+Observing the contingency table comparing user membership status and platform usage reveals a significant 116% increase in total premium memberships compared to normal memberships overall, emphasizing a clear preference for premium memberships on the website.
+
+Examining the row percentages of users within each platform uncovers a consistent trend -- users, regardless of the platform, exhibit a preference for premium membership. The data shows a general 32% preference for normal and a 68% preference for premium memberships across all platforms.
+
+Further exploration of relative proportions in each column underscores the similarity in preferences between membership types regarding platform usage. Users consistently favor Android, Chrome, Others, and Mozilla Firefox platforms, with comparable proportions seen in both premium and normal membership users.
+
+A stacked barplot visually represents the counts and proportions of membership types across different platforms, providing a clear and intuitive overview of the aforementioned trends. In summary, the contingency table reveals a widespread and consistent preference for premium memberships across platforms, with users also favoring specific platforms for accessing the e-commerce website.
+
+Moving forward, we will explore three additional contingency tables to investigate potential relationships between memberships and four other key factors: gender, country, language, and payment method. By examining these tables, we aim to uncover information that will guide further analysis and decision-making. Understanding how membership preferences vary across gender, country, and payment method will provide key insights for our analysis.
+
+```{r}
+
+ #Contingency table - gender and membership
+ 
+ my.ctable2 <- table(E_commerce_data_prepared1$membership, E_commerce_data_prepared1$gender)
+ 
+ #Relative frequencies 
+ 
+ addmargins(my.ctable2) #add up row/column totals 
+ 
+ proportions(my.ctable2) #proportions of all users in data 
+ 
+ proportions(my.ctable2, 1) #row proportions 
+ 
+ proportions(my.ctable2, 2) #column proportions 
+
+ #Stacked barplot 
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = gender, fill = membership)) +
+  geom_bar() +
+  labs(title = "Stacked Barplot of Gender and Membership",
+       x = "Gender",
+       y = "Count", fill = "Membership") +
+  theme_minimal()
+    
+
+    
+
+```
+
+The relative frequency table indicates only a marginal difference in membership preferences between male and female users, with both genders showing a preference for premium membership at a rate of about 68%. Despite a higher percentage of female visitors to the site (60% vs. 40%), their membership preferences exhibit a similar pattern.
+
+Notably, 41% of all users who make purchases on the website are female premium members, compared to 27% for males, suggesting that female premium members may contribute significantly to site sales. The stacked barplot visually affirms greater female counts in both membership types, while showing similar proportions between normal and premium memberships for both genders.
+
+```{r}
+
+ #Contingency table - country and membership 
+ 
+ my.ctable3 <- table(E_commerce_data_prepared1$membership, E_commerce_data_prepared1$country) 
+ 
+ #Relative frequencies  
+ 
+ addmargins(my.ctable3)
+ 
+ proportions(my.ctable3)
+
+ proportions(my.ctable3, 1) #row proportions 
+ 
+ proportions(my.ctable3, 2) #column proportions 
+ 
+ #Stacked barplot 
+  
+ ggplot(E_commerce_data_prepared1, aes(x = country, fill = membership)) +
+  geom_bar() +
+  labs(title = "Stacked Barplot of Country and Membership",
+       x = "Country",
+       y = "Count", fill = "Membership") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  
+ 
+
+```
+
+From our visualization, it's evident that Italy, the United States, and Canada boast the highest membership rates. Additionally, these countries harbor the largest number of Premium members, with Italy leading the pack. As such, these regions may prove the most promising for marketing strategies.
+
+```{r}
+
+ #Contingency table - language and membership 
+
+ my.ctable5 <- table(E_commerce_data_prepared1$membership, E_commerce_data_prepared1$language) 
+
+ #Relative frequencies
+ 
+ addmargins(my.ctable5)
+ 
+ proportions(my.ctable5)
+
+ proportions(my.ctable5, 1) #row proportions 
+ 
+ proportions(my.ctable5, 2) #column proportions 
+ 
+ #Stacked barplot 
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = language, fill =  membership)) +
+  geom_bar() +
+  labs(title = "Stacked Barplot of Language and Membership",
+       x = "Language",
+       y = "Count", fill = "Membership") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+  
+ 
+
+
+```
+
+The visualization unmistakably indicates that the majority of paying site members are English speakers. Therefore, it may be advisable to suggest that marketing targets this demographic. Further analysis will be needed to see if there is a statistically significant association between language and membership.
+
+```{r}
+
+ #Contingency table - payment method and membership 
+ 
+ my.ctable4 <- table(E_commerce_data_prepared1$membership, E_commerce_data_prepared1$pay_method) 
+ 
+ #Relative frequencies 
+ 
+ addmargins(my.ctable4)
+ 
+ proportions(my.ctable4)
+
+ proportions(my.ctable4, 1) #row proportions 
+ 
+ proportions(my.ctable4, 2) #column proportions 
+
+ #Stacked barplot 
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = pay_method, fill =  membership)) +
+  geom_bar() +
+  labs(title = "Stacked Barplot of Payment Method and Membership",
+       x = "Payment Method",
+       y = "Count", fill = "Membership") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+  
+ 
+
+```
+
+Upon examining the global proportions within our contingency table, it becomes apparent that paying users exhibit a preference for utilizing cash, credit cards, and debit cards when making purchases on the website, irrespective of their membership status (normal or premium). This discernible trend is illustrated in the stacked barplot. Further validation from both row and column proportions reinforces the notion that the distribution of preferences for payment methods among members appears strikingly similar. Still, premium users constitute the majority in each payment method category, yet the proportional preferences remain consistent across both membership types.
+
+With our data now prepared and processed, we've laid the groundwork for in-depth analysis. In the upcoming "Analyze" phase, we'll delve into potential associations among variables, explore numerical data using descriptive statistics and graphs, investigate relationships with the sales variable, and conduct additional statistical tests. These steps will contribute to data-driven insights and actionable recommendations for stakeholders.
+
+## Analyze: Unveiling Patterns
+
+As we transition into the "Analyze" phase of our EDA journey, the groundwork laid in the "Ask, Prepare, and Process" phases paves the way towards discovering deeper insights. With an understanding of potential key relationships among our prepared dataset, we finally turn our attention towards discovering the intricacies within the data. This phase promises to uncover nuanced patterns and deliver data-driven revelations that will help guide strategic decisions. Join me as I embark on the next leg of our data exploration, ready to extract actionable insights to shape the future of the e-commerce marketing strategies.
+
+We begin our analysis by exploring our numerical data using descriptive statistics to get an overview of the variables center and spread.
+
+```{r}
+ 
+ #Quantitative analysis 
+
+ #Univariate 
+
+ summary(E_commerce_data_prepared1$sales) #summary stats/standard deviations 
+ 
+ sd(E_commerce_data_prepared1$sales) 
+ 
+ summary(E_commerce_data_prepared1$duration_min)
+
+ sd(E_commerce_data_prepared1$duration_min) 
+ 
+ summary(E_commerce_data_prepared1$total_bytes)
+ 
+ sd(E_commerce_data_prepared1$total_bytes)
+
+ summary(E_commerce_data_prepared2$age)
+
+ sd(E_commerce_data_prepared2$age) 
+
+ 
+```
+
+Through our summary statistics and standard deviations, we are able to get an overview of the central tendency and variability of our numerical data. As shown, the mean and median for the age and duration of time spent on the website appear to be very similar, as the standard deviation values are both small, suggesting a relatively low amount of variability and spread.
+
+The sales and total bytes variables, however, have a much larger interquartile range and a much higher standard deviation, which suggests that the data is much more dispersed. The mean and medians of these variables are also not similar. This is likely caused by the presence of outlying values, as seen by the very high maximum values, which likely is leading to the large skewness of the data. In this case, the median values values would give us a better overview of where the center of the data lies for the 'sales' and 'total bytes' variables.
+
+To continue exploration of our data, we will look further into our summary statistics across different categorical groups.
+
+```{r}
+ 
+ #Descriptive statistics between categorical variables 
+ 
+ favstats(sales ~ gender, data = E_commerce_data_prepared1)
+
+ favstats(sales ~ membership, data = E_commerce_data_prepared1)
+ 
+ favstats(sales ~ age, data = E_commerce_data_prepared2) 
+
+ favstats(sales ~ language, data = E_commerce_data_prepared1)
+ 
+ favstats(sales ~ platform_used, data = E_commerce_data_prepared1)
+ 
+ favstats(sales ~ country, data = E_commerce_data_prepared1)
+ 
+```
+
+Due to the amount of variability within the 'sales' variable as indicated from its outlying values, large differences in mean and median, and large interquartile range and standard deviation; we should expect to see some variability within the descriptive statistics of different groups, and their resulting factors.
+
+As expected, the mean/median tends to vary between the different levels of the groups. Nonetheless, between the different genders the median value remains the same at 75 dollars. Further statistical tests will be needed to see if any statistical significance is apparent between any of the groups.
+
+```{r}
+ 
+ favstats(duration_min ~ gender, data = E_commerce_data_prepared1)
+ 
+ favstats(duration_min ~ membership, data = E_commerce_data_prepared1)
+ 
+ favstats(duration_min ~ age, data = E_commerce_data_prepared2)
+ 
+ favstats(duration_min ~ language, data = E_commerce_data_prepared1)
+ 
+ favstats(duration_min ~ platform_used, data = E_commerce_data_prepared1)
+ 
+ favstats(duration_min ~ country, data = E_commerce_data_prepared1)
+ 
+ 
+```
+
+Looking at our 'duration_min' variable gives us some useful insights. The mean and median values tend to be the same across different groups, and the variability also remains fairly constant. From the first and third quartiles, it appears that about half of the time spend on the website is expected to be between 40 and 69 minutes. This is least consistent across different languages and countries, yet the standard deviation and ensuing variation of the time spend on the website remains very consistent, despite the large difference in sample size among the various countries and languages.
+
+```{r}
+
+ favstats(age ~ gender, data = E_commerce_data_prepared2)
+ 
+ favstats(age ~ membership, data = E_commerce_data_prepared2)
+ 
+ favstats(age ~ language, data = E_commerce_data_prepared2)
+ 
+ favstats(age ~ platform_used, data = E_commerce_data_prepared2)
+ 
+ favstats(age ~ country, data = E_commerce_data_prepared2)
+ 
+
+```
+
+Age tends to be consistent across the different groups, with a median and mean value that hovers around 40 to 45 years of age. Between genders, the first and third quartiles are the same, 30 to 56 years of age, which represents where 50% of the websites users age ranges are expected to land when accessing the site.
+
+We can also visual and observe the data within the numerical variables using a histogram.
+
+```{r}
+ 
+ #Univariate numerical data visualizations 
+
+ ggplot(E_commerce_data_prepared1, aes(x = sales)) +
+  geom_histogram(bins = 60, fill = "orange", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Sales", x = "Sales Amount", y = "Frequency") +
+  theme_minimal() +
+  coord_cartesian(xlim = c(0,6000), ylim = c(0,100000)) 
+ 
+
+```
+
+From the histogram, it appears that the sales variable takes on a skewness to the right, as the majority of the website's sales fall on the lower end of values, with a few that tail off to higher values.
+
+```{r}
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = duration_min)) + 
+   geom_histogram(bins = 70, fill = "navyblue", color = "grey", alpha = 0.7) +  labs(title = "Histogram of Site Duration", x = "Duration (mins)", y = "Frequency") + 
+   scale_y_continuous(limits = c(0, 3000), breaks = seq(0, 3000, 1000)) 
+ 
+```
+
+The time spent on the website takes on a uniform distribution, as users tend to spend anywhere between 25 and 83 minutes on the website.
+
+```{r}
+
+ ggplot(E_commerce_data_prepared1, aes(x = total_bytes)) +
+  geom_histogram(binwidth = 350, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Byte Usage", x = "Bytes", y = "Frequency") +
+  theme_minimal() +
+  coord_cartesian(xlim = c(0, 10000)) 
+
+
+```
+
+Like sales, the total bytes used by users is right skewed in its distribution. This may indicate that larger transactions that lead to a higher sales amount take up a higher byte usage.
+
+```{r}
+
+ ggplot(E_commerce_data_prepared2, aes(x = age)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Age", x = "Age", y = "Frequency") +
+  theme_minimal() #uniform distribution 
+
+```
+
+The visual display of the ages of users that access and are able to spend money on the website takes on a uniform distribution. This indicates that the ages of those that view the website each have a fairly equal likelihood of being between 18 and 69 years of age. Further analysis will be needed to see if any age group spends money on the site at a rate that is significantly higher than the other age groups, statistically speaking.
+
+For the next phase in our analysis, we will be looking to see if any linear associations exist between our numerical data using correlation analysis.
+
+```{r}
+
+ #Statistical correlation analysis of bivariate numerical data
+
+ cor(E_commerce_data_prepared1$sales, E_commerce_data_prepared1$total_bytes)
+
+ cor(E_commerce_data_prepared2$sales, E_commerce_data_prepared2$age)
+
+ cor(E_commerce_data_prepared1$sales, E_commerce_data_prepared1$duration_min) 
+
+ cor(E_commerce_data_prepared2$duration_min, E_commerce_data_prepared2$age)
+
+ cor(E_commerce_data_prepared1$duration_min, E_commerce_data_prepared1$total_bytes)
+ 
+ cor(E_commerce_data_prepared2$age, E_commerce_data_prepared2$total_bytes)
+
+ 
+
+```
+
+By observing our correlation coefficients we see that all of our values hover around 0, which indicates that no linear correlation exists between the variables. So, we can not accurately predict or create a linear model that represents their relationships.
+
+We will now run some statistical tests to observe if the sales on the website differs between the various categorical variables in any significant way.
+
+```{r, message=FALSE}
+ 
+  #Median, total sales of each membership with percentage 
+ 
+  total_sales_median_memberships <- E_commerce_data_prepared1 %>%
+  group_by(membership) %>%
+  summarize(total_sales = sum(sales), median_sales = median(sales)) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>% 
+  arrange(desc(total_sales))
+
+  total_sales_median_memberships
+ 
+  
+  #Median, total sales of genders 
+ 
+  total_sales_median_genders <- E_commerce_data_prepared1 %>%
+  group_by(gender) %>%
+  summarize(total_sales = sum(sales), median_sales = median(sales)) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>% 
+  arrange(desc(total_sales))
+
+  total_sales_median_genders
+  
+  
+  #Median, total sales of different ages 
+ 
+  total_sales_median_ages <- E_commerce_data_prepared2 %>%
+  group_by(age) %>%
+  summarize(total_sales = sum(sales), median_sales = median(sales)) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>% 
+  arrange(desc(total_sales))
+
+  total_sales_median_ages
+ 
+
+  #Median, total sales of languages  
+ 
+  total_sales_median_language <- E_commerce_data_prepared1 %>%
+  group_by(language) %>%
+  summarize(total_sales = sum(sales), median_sales = median(sales)) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>% 
+  arrange(desc(total_sales))
+
+  total_sales_median_language 
+ 
+  
+  #Median, total sales of each country 
+ 
+  total_sales_median_country <- E_commerce_data_prepared1 %>%
+  group_by(country) %>%
+  summarize(total_sales = sum(sales), median_sales = median(sales)) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>% 
+  arrange(desc(total_sales))
+
+  total_sales_median_country 
+  
+  
+  #Median, total sales of payment methods 
+ 
+  total_sales_median_payment <- E_commerce_data_prepared1 %>%
+  group_by(pay_method) %>%
+  summarize(total_sales = sum(sales), median_sales = median(sales)) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>% 
+  arrange(desc(total_sales))
+
+  total_sales_median_payment 
+  
+  
+  #Median, total sales of platforms
+ 
+  total_sales_median_platform <- E_commerce_data_prepared1 %>%
+  group_by(platform_used) %>%
+  summarize(total_sales = sum(sales), median_sales = median(sales)) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>% 
+  arrange(desc(total_sales))
+
+  total_sales_median_platform
+  
+  
+  
+  
+  #Sales across multiple categories 
+  
+  #Total sales by payment method, membership
+  
+ total_sales_by_membership_payment <- E_commerce_data_prepared1 %>%
+   group_by(membership, pay_method) %>%
+   summarize(total_sales = sum(sales)) %>%
+   group_by(membership) %>%
+   mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>%
+   arrange(membership, desc(total_sales))
+
+ total_sales_by_membership_payment 
+ 
+ 
+ #Total sales by gender, membership 
+
+ total_sales_by_gender_membership <- E_commerce_data_prepared1 %>%
+  filter(gender %in% c("Male", "Female")) %>%
+  group_by(gender, membership) %>%
+  summarize(total_sales = sum(sales, na.rm = TRUE)) %>%
+  mutate(percentage = round((total_sales / sum(total_sales)) * 100, 2))
+
+ total_sales_by_gender_membership 
+ 
+
+  #Total sales by language, membership
+  
+ total_sales_by_membership_language <- E_commerce_data_prepared1 %>%
+   group_by(membership, language) %>%
+   summarize(total_sales = sum(sales)) %>%
+   group_by(membership) %>%
+   mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>%
+   arrange(membership, desc(total_sales))
+
+ total_sales_by_membership_language 
+ 
+
+ #Total sales by country, membership
+  
+ total_sales_by_country_membership <- E_commerce_data_prepared1 %>%
+   group_by(membership, country) %>%
+   summarize(total_sales = sum(sales)) %>%
+   group_by(membership) %>%
+   mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>%
+   arrange(membership, desc(total_sales))
+
+ total_sales_by_country_membership 
+
+
+# Total sales by platform, membership
+total_sales_by_platform_membership <- E_commerce_data_prepared1 %>%
+  group_by(membership, platform_used) %>%
+  summarize(total_sales = sum(sales)) %>%
+  group_by(membership) %>%
+  mutate(percentage = round(total_sales / sum(total_sales) * 100, 2)) %>%
+  arrange(membership, desc(total_sales))
+
+total_sales_by_platform_membership
+
+
+
+ 
+```
+
+Below is a summary of the key statistical insights generated from the analysis.
+
+-Premium membership users account for about 68% of total sales on the website, whereas normal members generate the remaining 32% of the sales. Median values of sales between memberships are \$72 and \$76, respectively.
+
+-Females have generated the most revenue on the website (60%), yet the median sales value between the genders is the same at \$76.
+
+-Among the age groups, users of 24 years have generated the highest amount of sales. The age group with the highest median in sales is 23 years, with a value of \$81.
+
+-English speakers make up the majority of sales (70%) on the website. Interestingly, the highest median sales value can be found among Norwegian and Swedish speakers at \$122.
+
+-Italy (20%), the United States (18%) and Canada (10%) have generated the most sales on the e-commerce platform.
+
+-Cash makes up the largest share of total sales on the website. About 42% of the sites revenue is generated through Cash, followed by Credit (31%) and Debit Cards (16%).
+
+-Among the different platforms, users of the Android App (22%), Chrome (16%), Others (15%) and Mozilla Firefox (15%) make up the majority in revenue. Median sales sit at \$76 for the Android and Chrome platforms, and \$72 for Mozilla Firefox and Others.
+
+-For premium and normal users; Cash, Credit and Debit are the preferred methods of payment at about equal proportions.
+
+-Both genders tend to prefer the premium membership at the same proportional rate.
+
+-The English language makes up the majority of total sales on the website and is the most preferred among users. 68% of total sale volume is generated by English speakers of the normal membership and 71% by premium membership on the e-commerce platform.
+
+-Users from countries that generate the most sales revenue; Italy, US and Canada, prefer to use the normal and premium memberships at relatively the same rate.
+
+-Among the platforms, we see that the relative sales generated between the normal and premium memberships is proportionally very similar; as the Android, Chrome and Others still reign as the top revenue generators, despite the membership status of the user.
+
+To conclude our analysis, we will run some inferential statistics in order to see if distributions of sales between groups differ significantly, as well as look into seeing if any associations exist from our contingency tables using a chi-square test. These tests will be non-parametric, as we saw in previous analysis that the sales variables is heavily skewed to the right, so the data does not take on a normal distribution and outliers must be accounted for.
+
+We will begin with using the Wilcoxon rank-sum test to see if the distribution of sale values differs between groups in a statistically significant way. Our designated alpha value will be 0.05, so any p-values below this suggests evidence to support the alternative hypothesis, which is that there is a difference in sale distributions between groups.
+
+```{r}
+ 
+ wilcox.test(sales ~ membership, data =  E_commerce_data_prepared1) 
+ 
+ wilcox.test(sales ~ gender, data = E_commerce_data_prepared1)
+
+
+```
+
+To extend the analysis to more than two groups compared, we can use the Kruskal-Wallis test, which looks to see if there is any significance between the difference in medians of multiple groups.
+
+```{r}
+
+ kruskal.test(sales ~ platform_used, data = E_commerce_data_prepared1)
+ 
+ kruskal.test(sales ~ language, data = E_commerce_data_prepared1)
+ 
+ kruskal.test(sales ~ country, data = E_commerce_data_prepared1)
+
+ kruskal.test(sales ~ age, data = E_commerce_data_prepared2)
+
+ kruskal.test(sales ~ pay_method, data = E_commerce_data_prepared1)
+
+
+
+```
+
+From our statistical analysis, we can see that only membership and language have p-values that are statistically significant, compared with sales amounts. This further supports the notion that premium users of the English language substantiate a significant portion of sales, and thus may serve as a primary target audience.
+
+For the final leg of our exploratory data analysis, we will return to our categorical variables to see if any associations exist within our contingency tables using the chi-squared test. Lastly, we will look deeper into any statistically significant associations in the tables by using the standardized residuals to examine which particular variables are contributing most to the chi-square statistic. Let's begin!
+
+```{r}
+ 
+ chisq.test(my.ctable) #platform and membership 
+ chisq.test(my.ctable2) #gender and membership
+ chisq.test(my.ctable3) #country and membership
+ chisq.test(my.ctable4) #payment method and membership 
+ chisq.test(my.ctable5) #language and membership 
+ 
+ 
+```
+
+Upon reviewing the p-values, we identify a statistically significant association only between language and membership (p-value \< 0.05). To pinpoint the specific languages driving the association between premium and normal memberships, we will analyze the standardized residuals.
+
+```{r}
+ 
+ chisq.test5 <- chisq.test(my.ctable5)
+ 
+ chisq.test5$stdres 
+ 
+
+
+```
+
+Based on standardized residuals, English language shows the strongest positive association with premium membership, while Chinese and Italian speakers exhibit strong positive associations with normal memberships. The positive associations exceed what would be expected under the assumption of independence between membership and language groups.
+
+With our analysis complete, we now will aim to present key insights visually, making them clear and accessible for stakeholders to readily understand and act upon.
+
+## Share: Communicating Key Findings
+
+The "Share" phase of the data analytics process is dedicated to articulating the key findings of the analysis in a way that facilitates clear understanding and more informed decision-making for stakeholders. Leveraging visualizations serves as a powerful tool, bridging the gap between analytical insights and actionable intelligence for the organization.
+
+```{r}
+
+
+ #Share - Key Visualizations From Analysis 
+
+
+ #Total sales by membership  
+
+ ggplot(E_commerce_data_prepared1, aes(x = membership, y = sales)) +
+  geom_bar(stat = "identity", width = 0.7, fill = "darkblue") + 
+  labs(title = "Total Sales by Membership", x = "Membership", y = "Sales Amount") +
+  theme_classic() + 
+   scale_y_continuous(labels = scales::dollar_format(scale = 1e-6, prefix = "$", suffix = "M")) 
+ 
+ 
+ #Total sales by payment method, membership 
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = pay_method, y = sales, fill = membership)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Sales by Payment Method and Membership", x = "Payment Method", y = "Total Sales", fill = "Membership") +
+  scale_fill_brewer(palette = "Dark2") + 
+   theme_classic() + 
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-6, prefix = "$", suffix = "M"))
+ 
+ 
+ #Total sales by gender 
+
+ ggplot(E_commerce_data_prepared1, aes(x = gender, y = sales)) +
+  geom_bar(stat = "identity", width = 0.7, fill = "maroon") + 
+  labs(title = "Total Sales by Gender", x = "Gender", y = "Sales Amount") +
+  theme_classic() + 
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-6, prefix = "$", suffix = "M"))
+
+  
+ #Barplot of total sales by platform, gender
+
+ ggplot(E_commerce_data_prepared1, aes(x = platform_used, y = sales, fill = gender)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Sales by Platform and Gender", x = "Platform", y = "Total Sales", fill = "Gender") +
+  scale_fill_brewer(palette = "Dark2") + 
+   theme_classic() + 
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-6, prefix = "$", suffix = "M")) + 
+   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ 
+
+ #Total sales by country 
+
+ ggplot(E_commerce_data_prepared1, aes(x = country, y = sales)) +
+  geom_bar(stat = "identity", width = 0.7, fill = "darkblue") + 
+  labs(title = "Total Sales by Country", x = "Country", y = "Sales Amount") +
+  theme_classic() + 
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-6, prefix = "$", suffix = "M"))
+ 
+
+ #Total sales by language 
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = language, y = sales)) +
+  geom_bar(stat = "identity", width = 0.7, fill = "maroon") + 
+  labs(title = "Total Sales by Language", x = "Language", y = "Sales Amount") + 
+  theme_classic() +   
+   scale_y_continuous(labels = scales::dollar_format(scale = 1e-6, prefix = "$", suffix = "M")) +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+ #Stacked barplot of language and membership counts 
+ 
+ ggplot(E_commerce_data_prepared1, aes(x = language, fill =  membership)) +
+  geom_bar() +
+  labs(title = "Stacked Barplot of Language and Membership",
+       x = "Language",
+       y = "Count", fill = "Membership") + 
+   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
+  scale_fill_brewer(palette = "Set1") 
+ 
+
+
+
+
+
+```
+
+\
+In our visualizations, key insights emerge: premium members dominate sales, with proportional spending patterns across payment methods. Demographically, females contribute around 60% of total sales, and specific platforms and countries (like Android, Chrome, Italy, the United States, and Canada) stand out. Notably, English is the preferred language, constituting over 70% of sales. The stacked barplot reinforces the preference of premium membership accessed through English, as confirmed by our Chi-square test.
+
+Consolidating these findings, we transition to the "Act" Phase, translating insights into actionable outcomes.
+
+## Act: Leveraging Insights into Strategic Action
+
+In the "Act" phase, we leverage our insights to propose strategic recommendations for our e-commerce website. Based on key findings, we suggest five hypothetical strategies to drive more informed, data-driven decisions:
+
+1.  Target marketing efforts and membership benefits specifically towards premium members, recognizing their significant contribution to sales.
+
+2.  Craft marketing campaigns tailored to resonate with the preferences of the female audience, acknowledging their substantial impact on revenue.
+
+3.  Implement regional targeting by tailoring advertising content to more profitable regions, such as Italy, the United States, and Canada.
+
+4.  Enhance the payment process for cash, credit, and debit cards, and optimize the user experience on preferred platforms: Android, Chrome, and Mozilla Firefox.
+
+5.  Direct website content and promotions in English to cater to the preferred language of premium users accessing the website.
+
+By implementing these recommendations, the e-commerce platform can advance towards improved decision-making and targeted marketing strategies. However, the iterative nature of the data analytics process necessitates ongoing refinement, as we must always remain mindful to the limitations within the data, and continually purify our insights. I appreciate your participation in this exploratory data analysis journey---until next time!
